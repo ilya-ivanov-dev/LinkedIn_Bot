@@ -1,14 +1,14 @@
 from selenium import webdriver
-from settings import username, password, proxy
-# from selenium.webdriver.chrome.options import Options
+from settings import username, password
 
 
 class LinkedinBot:
-    def __init__(self, proxy):
-        """ Proxy initialization Chromedriver, sets urls, username and password for user """
+    def __init__(self):
+        """ Opening Operadriver with VPN and sets urls """
         browser_options = webdriver.ChromeOptions()
-        browser_options.add_argument(f'--proxy-server={proxy}')
-        self.browser = webdriver.Chrome(options=browser_options)
+        opera_config = '/home/dan/.config/opera'
+        browser_options.add_argument('user-data-dir=' + opera_config)
+        self.browser = webdriver.Opera(options=browser_options)
 
         self.base_url = 'https://www.linkedin.com'
         self.login_url = f'{self.base_url}/login'
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     industry = '%5B"96"%5D'     # Сфера  - IT
 
 
-    bot = LinkedinBot(proxy)
+    bot = LinkedinBot()
     bot.login(username, password)
     bot.search(geo, job_position, industry)
 
