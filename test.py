@@ -38,6 +38,10 @@ class LinkedinBot:
 
 
 
+
+
+
+
 if __name__ == '__main__':
 
     """ Search filters """
@@ -49,5 +53,6 @@ if __name__ == '__main__':
     bot = LinkedinBot()
     bot.login(username, password)
     bot.search(geo, job_position, industry)
+
 
 
