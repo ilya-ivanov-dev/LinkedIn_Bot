@@ -44,12 +44,11 @@ class LinkedinBot:
 
     def parse(self):
         """ Parsing result data """
-        search_results_list = []
         self.browser.find_element_by_tag_name('body').send_keys(Keys.END)   # прокрутка до конца страницы
         time.sleep(1)
 
-        search_result = self.browser.find_elements_by_class_name("search-result__wrapper")
-        href_list = self.browser.find_elements_by_class_name("search-result__result-link")
+        search_result = self.browser.find_elements_by_class_name("search-result__wrapper")  # все контакты на странице
+        href_list = self.browser.find_elements_by_class_name("search-result__result-link")  # все ссылки на странице
 
         i = 0
         for result in search_result:
@@ -65,19 +64,16 @@ class LinkedinBot:
             time_now = now.strftime("%H-%M-%S")
 
             if N == 5 or N == 6:    # Доступные контакты
-                row = {
+                contact = {
                     'date': date_now,
                     'time': time_now,
                     'name': res_elem[0],
-                    'job_position': res_elem[3],
+                    'job': res_elem[3],
                     'href': href,
                     'geo': res_elem[4],
                     'status': res_elem[-1]
                 }
-                search_results_list.append((row['date'], row['time'], row['name'], row['job_position'],
-                                            row['href'], row['geo'], row['status']))
-        return search_results_list
-
+                db_save(contact)
 
 
 if __name__ == '__main__':
@@ -93,8 +89,5 @@ if __name__ == '__main__':
     # bot.login(username, password)
     bot.search()
     contacts = bot.parse()
-    db_save(contacts)
 
     print()
-
-
