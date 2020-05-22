@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
 from db_use import db_save
-# from settings import username, password
+from settings.settings import message, search_filters, username, password
 
 
 class LinkedinBot:
@@ -44,12 +44,15 @@ class LinkedinBot:
         """ Go to the search results page """
         self._nav(self.search_filters_url)
 
+    def send_message(self, message):
+        pass
+
     def parsing_page(self):
         """ Parsing result data """
-        self.browser.find_element_by_tag_name('body').send_keys(Keys.END)   # прокрутка до конца страницы
-        time.sleep(1)
+        self.browser.find_element_by_tag_name("body").send_keys(Keys.END)   # прокрутка до конца списка
+        time.sleep(2)
 
-        search_result = self.browser.find_elements_by_class_name("search-result__wrapper")  # все контакты на странице
+        search_result = self.browser.find_elements_by_class_name("search-result__wrapper")
         href_list = self.browser.find_elements_by_class_name("search-result__result-link")  # все ссылки на странице
 
         i = 0
@@ -57,7 +60,12 @@ class LinkedinBot:
             res = result.text
             href = href_list[i].get_attribute("href")
             i += 2
+
             N = res.count('\n')
+            #   0      1     2          -3     -2      -1
+            # name | name | 3rd | 3rd | job | geo | connect     N == 6
+            #   0      1          -3    -2      -1
+            # name | 3rd  | 3rd | job | geo | connect           N == 5
             res_elem = res.split('\n')
 
             tz = pytz.timezone('Europe/Moscow')
@@ -67,15 +75,20 @@ class LinkedinBot:
 
             if N == 5 or N == 6:    # Доступные контакты
                 contact = {
-                    'date': date_now,
-                    'time': time_now,
-                    'name': res_elem[0],
-                    'job': res_elem[3],
-                    'href': href,
-                    'geo': res_elem[4],
+                    'date'  : date_now,
+                    'time'  : time_now,
+                    'name'  : res_elem[0],
+                    'job'   : res_elem[-3],
+                    'href'  : href,
+                    'geo'   : res_elem[-2],
                     'status': res_elem[-1]
                 }
+                self.send_message(message)
                 db_save(contact)
+                contact.clear()
+        search_result.clear()
+        href_list.clear()
+        print()
 
     def next_page(self):
         """ Go to the next search page """
@@ -86,20 +99,13 @@ class LinkedinBot:
         while True:
             self.parsing_page()
             self.next_page()
+            time.sleep(2)
 
 
 if __name__ == '__main__':
-
-    """ Search filters """
-    geo = '%5B"ru%3A0"%5D'      # Геолокация - Россия
-    job_position = 'hr'         # Профессия - HR
-    industry = '%5B"96"%5D'     # Сфера  - IT
-    search_filters = [geo, job_position, industry]
-
     """ Run LinkedinBot """
     bot = LinkedinBot(search_filters)
     # bot.login(username, password)
     bot.search()
     bot.auto_parsing()
-
     print()

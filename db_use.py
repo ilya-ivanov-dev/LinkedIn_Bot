@@ -11,21 +11,21 @@ def db_save(val):
       Time TEXT, 
       Name TEXT, 
       Job_position TEXT, 
-      href TEXT, 
       Geo TEXT, 
+      href TEXT,       
       Status TEXT
       )
     """)
 
     cur.execute(f"""
-      INSERT INTO Contacts (Date, Time, Name, Job_position, href, Geo, Status)
+      INSERT INTO Contacts (Date, Time, Name, Job_position, Geo, href, Status)
       VALUES (
         '{val.get('date')}', 
         '{val.get('time')}', 
         '{val.get('name')}', 
         '{val.get('job')}', 
-        '{val.get('href')}', 
         '{val.get('geo')}', 
+        '{val.get('href')}', 
         '{val.get('status')}'
         )
     """)
