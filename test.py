@@ -30,6 +30,7 @@ class LinkedinBot:
         self.search_filters_url = f'{self.search_url}{geo}{pos}{ind}'
 
     def _nav(self, url):
+        """ Go to page """
         self.browser.get(url)
 
     def login(self, username, password):
@@ -40,9 +41,10 @@ class LinkedinBot:
         self.browser.find_element_by_class_name('btn__primary--large').click()
 
     def search(self):
+        """ Go to the search results page """
         self._nav(self.search_filters_url)
 
-    def parse(self):
+    def parsing_page(self):
         """ Parsing result data """
         self.browser.find_element_by_tag_name('body').send_keys(Keys.END)   # прокрутка до конца страницы
         time.sleep(1)
@@ -75,6 +77,16 @@ class LinkedinBot:
                 }
                 db_save(contact)
 
+    def next_page(self):
+        """ Go to the next search page """
+        self.browser.find_element_by_xpath("//button[@aria-label='Next']").click()
+
+    def auto_parsing(self):
+        """ Parsing search results pages """
+        while True:
+            self.parsing_page()
+            self.next_page()
+
 
 if __name__ == '__main__':
 
@@ -88,6 +100,6 @@ if __name__ == '__main__':
     bot = LinkedinBot(search_filters)
     # bot.login(username, password)
     bot.search()
-    contacts = bot.parse()
+    bot.auto_parsing()
 
     print()

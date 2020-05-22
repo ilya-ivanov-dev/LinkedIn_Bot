@@ -20,13 +20,13 @@ def db_save(val):
     cur.execute(f"""
       INSERT INTO Contacts (Date, Time, Name, Job_position, href, Geo, Status)
       VALUES (
-        '{val['date']}', 
-        '{val['time']}', 
-        '{val['name']}', 
-        '{val['job']}', 
-        '{val['href']}', 
-        '{val['geo']}', 
-        '{val['status']}'
+        '{val.get('date')}', 
+        '{val.get('time')}', 
+        '{val.get('name')}', 
+        '{val.get('job')}', 
+        '{val.get('href')}', 
+        '{val.get('geo')}', 
+        '{val.get('status')}'
         )
     """)
 
