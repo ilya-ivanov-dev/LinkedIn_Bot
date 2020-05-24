@@ -1,6 +1,5 @@
 import time, datetime
-
-import pytz as pytz
+import pytz
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -21,13 +20,13 @@ class LinkedinBot:
         self.search_url = f'{self.base_url}/search/results/people/'
 
         """ Filter search url """
-        if search_f[0]:
-            geo = f'?facetGeoRegion={search_f[0]}'
-        if search_f[1]:
-            pos = f'&title={search_f[1]}'
-        if search_f[2]:
-            ind = f'&facetIndustry={search_f[2]}'
-        self.search_filters_url = f'{self.search_url}{geo}{pos}{ind}'
+        if search_f['geo']:
+            geo = f"?facetGeoRegion={search_f['geo']}"
+        if search_f['job']:
+            job = f"&title={search_f['job']}"
+        if search_f['ind']:
+            ind = f"&facetIndustry={search_f['ind']}"
+        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}'
 
     def _nav(self, url):
         """ Go to page """
@@ -43,69 +42,83 @@ class LinkedinBot:
     def search(self):
         """ Go to the search results page """
         self._nav(self.search_filters_url)
+        self.scroll_end_page()
 
-    def send_message(self, message):
-        pass
-
-    def parsing_page(self):
-        """ Parsing result data """
-        self.browser.find_element_by_tag_name("body").send_keys(Keys.END)   # прокрутка до конца списка
+    def scroll_end_page(self):
+        self.browser.find_element_by_tag_name("body").send_keys(Keys.END)  # прокрутка до конца страницы
         time.sleep(2)
 
-        search_result = self.browser.find_elements_by_class_name("search-result__wrapper")
-        href_list = self.browser.find_elements_by_class_name("search-result__result-link")  # все ссылки на странице
+    def page_search_result(self):
+        return self.browser.find_elements_by_class_name("search-result__wrapper")       # список контактов HR
 
+    def page_href_list(self):
+        return self.browser.find_elements_by_class_name("search-result__result-link")   # список ссылок на страницы HR
+
+    def page_connect_buttons(self):
+        return self.browser.find_elements_by_class_name("search-result__action-button") # список кнопок Connect
+
+    def send_message(self, name, message):
+        self.browser.find_element_by_xpath("//button[@data-control-name='srp_profile_actions']")
+        pass
+
+    def connect_and_save_contacts(self):
+        """ Отправка сообщения (через Connect) и запись контакта в БД """
         i = 0
-        for result in search_result:
+        href_list = self.page_href_list()
+        search_res = self.page_search_result()
+        for result in search_res:
             res = result.text
-            href = href_list[i].get_attribute("href")
-            i += 2
-
             N = res.count('\n')
-            #   0      1     2          -3     -2      -1
-            # name | name | 3rd | 3rd | job | geo | connect     N == 6
-            #   0      1          -3    -2      -1
+            #   0            2    -4    -3             -1
+            # name | 2nd  | 2nd | job | geo | sh_c | connect    N == 6  2nd degree connection
+            #   0            2          -3     -2      -1
+            # name | name | 3rd | 3rd | job | geo  | connect    N == 6  3rd degree connection
+            #   0                 -3    -2      -1
             # name | 3rd  | 3rd | job | geo | connect           N == 5
-            res_elem = res.split('\n')
+            # LinkedIn Member (without button Connect)          N == 3
+            res_elem = res.split('\n')  # информация о HR
 
-            tz = pytz.timezone('Europe/Moscow')
-            now = datetime.datetime.now(tz)
-            date_now = now.strftime("%d-%m-%Y")
-            time_now = now.strftime("%H-%M-%S")
+            # Проверка контакта на доступность, отправка сообщения через Connect и запись в БД
+            if (N == 5 or N == 6) and res_elem[-1] == 'Connect':
+                # Определяем текущие дату и время
+                tz = pytz.timezone('Europe/Moscow')
+                now = datetime.datetime.now(tz)
+                date_now = now.strftime("%d-%m-%Y")
+                time_now = now.strftime("%H-%M-%S")
 
-            if N == 5 or N == 6:    # Доступные контакты
+                href = href_list[i].get_attribute("href")
                 contact = {
-                    'date'  : date_now,
-                    'time'  : time_now,
-                    'name'  : res_elem[0],
-                    'job'   : res_elem[-3],
-                    'href'  : href,
-                    'geo'   : res_elem[-2],
-                    'status': res_elem[-1]
+                    'date': date_now,
+                    'time': time_now,
+                    'name': res_elem[0],
+                    'status': res_elem[-1],
+                    'href': href,
                 }
-                self.send_message(message)
+                if res_elem[2] == '2nd':
+                    contact['job'] = res_elem[-4]
+                    contact['geo'] = res_elem[-3]
+                else:
+                    contact['job'] = res_elem[-3]
+                    contact['geo'] = res_elem[-2]
                 db_save(contact)
-                contact.clear()
-        search_result.clear()
-        href_list.clear()
-        print()
+            i += 2  # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
 
     def next_page(self):
         """ Go to the next search page """
         self.browser.find_element_by_xpath("//button[@aria-label='Next']").click()
+        time.sleep(1)
+        self.scroll_end_page()
 
-    def auto_parsing(self):
+    def start_bot(self):
         """ Parsing search results pages """
+        # self.login(username, password)
+        self.search()
         while True:
-            self.parsing_page()
+            self.connect_and_save_contacts()
             self.next_page()
-            time.sleep(2)
 
 
 if __name__ == '__main__':
     """ Run LinkedinBot """
     bot = LinkedinBot(search_filters)
-    # bot.login(username, password)
-    bot.search()
-    bot.auto_parsing()
-    print()
+    bot.start_bot()

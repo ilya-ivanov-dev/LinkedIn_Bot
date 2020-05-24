@@ -10,10 +10,11 @@ message = 'Здравствуйте, я Junior Python разработчик с 
           'Я ищу работу и буду рад, если вы добавите меня в друзья.'
 
 """ Search filters """
-geo = '%5B"ru%3A0"%5D'      # Геолокация - Россия
-job_position = 'hr'         # Профессия - HR
-industry = '%5B"96"%5D'     # Сфера деят-ти  - IT
-search_filters = [geo, job_position, industry]
+search_filters = {
+    'geo': '%5B"ru%3A0"%5D',        # Геолокация - Россия
+    'job': 'hr',                    # Профессия - HR
+    'ind': '%5B"96"%5D'             # Сфера деят-ти  - IT
+}
 
 """ Import email and password during development """
 if os.path.isfile('local_settings.py'):
