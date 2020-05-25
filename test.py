@@ -1,10 +1,11 @@
 import time, datetime
 import pytz
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 from db_use import db_save
-from settings.settings import message, search_filters, username, password
+from settings.settings import mes1, mes2, search_filters, username, password
 
 
 class LinkedinBot:
@@ -42,30 +43,34 @@ class LinkedinBot:
     def search(self):
         """ Go to the search results page """
         self._nav(self.search_filters_url)
+        time.sleep(2)
         self.scroll_end_page()
 
     def scroll_end_page(self):
         self.browser.find_element_by_tag_name("body").send_keys(Keys.END)  # прокрутка до конца страницы
-        time.sleep(2)
+        time.sleep(1)
 
-    def page_search_result(self):
-        return self.browser.find_elements_by_class_name("search-result__wrapper")       # список контактов HR
-
-    def page_href_list(self):
-        return self.browser.find_elements_by_class_name("search-result__result-link")   # список ссылок на страницы HR
-
-    def page_connect_buttons(self):
-        return self.browser.find_elements_by_class_name("search-result__action-button") # список кнопок Connect
-
-    def send_message(self, name, message):
-        self.browser.find_element_by_xpath("//button[@data-control-name='srp_profile_actions']")
-        pass
+    def send_message(self, name_surname, button):
+        ActionChains(self.browser).move_to_element(button).perform()    # прокрутка к кнопке Connect
+        time.sleep(0.5)
+        button_id = button.get_attribute('id')
+        self.browser.find_element_by_id(f"{button_id}").click()
+        self.browser.find_element_by_xpath("//button[@aria-label='Add a note']").click()
+        name = name_surname.split(' ')[0]
+        message = f'{mes1}{name}{mes2}'
+        self.browser.find_element_by_tag_name("textarea").send_keys(message)
+        time.sleep(3)
+        self.browser.find_element_by_xpath("//button[@aria-label='Done']").click()
+        # aria-label='Send invitation'
 
     def connect_and_save_contacts(self):
         """ Отправка сообщения (через Connect) и запись контакта в БД """
-        i = 0
-        href_list = self.page_href_list()
-        search_res = self.page_search_result()
+        self.browser.find_element_by_tag_name("body").send_keys(Keys.HOME)  # прокрутка наверх страницы
+        i_href = 0
+        i_button = 0
+        href_list = self.browser.find_elements_by_class_name("search-result__result-link")   # список ссылок на страницы HR
+        search_res = self.browser.find_elements_by_class_name("search-result__wrapper")       # список контактов HR
+        button_list = self.browser.find_elements_by_xpath("//div[@class='search-result__actions']/div")   # список кнопок контактов
         for result in search_res:
             res = result.text
             N = res.count('\n')
@@ -86,25 +91,33 @@ class LinkedinBot:
                 date_now = now.strftime("%d-%m-%Y")
                 time_now = now.strftime("%H-%M-%S")
 
-                href = href_list[i].get_attribute("href")
+                href = href_list[i_href].get_attribute("href")
                 contact = {
                     'date': date_now,
                     'time': time_now,
                     'name': res_elem[0],
-                    'status': res_elem[-1],
+                    'status': 'Invite Sent',
                     'href': href,
                 }
+                button = button_list[i_button]
+                self.send_message(contact['name'], button)
                 if res_elem[2] == '2nd':
                     contact['job'] = res_elem[-4]
                     contact['geo'] = res_elem[-3]
                 else:
                     contact['job'] = res_elem[-3]
                     contact['geo'] = res_elem[-2]
-                db_save(contact)
-            i += 2  # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
+
+                db_save(contact)        # Сохраняем контакт в БД
+
+            i_href += 2     # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
+
+            if N == 5 or N == 6:    # Контакт LinkedIn Member без кнопки, пропускаем проходе через список
+                i_button += 1
 
     def next_page(self):
         """ Go to the next search page """
+        self.scroll_end_page()
         self.browser.find_element_by_xpath("//button[@aria-label='Next']").click()
         time.sleep(1)
         self.scroll_end_page()

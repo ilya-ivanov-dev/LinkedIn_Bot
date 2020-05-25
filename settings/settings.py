@@ -1,13 +1,14 @@
 import os.path
 
 
-""" LinkedIn Email and Password """
+""" LinkedIn Email and Password. Write down your details """
 username = 'test@test.com'
 password = 'password'
 
-""" Message to send HR """
-message = 'Здравствуйте, я Junior Python разработчик с опытом программирования более 7 месяцев. ' \
-          'Я ищу работу и буду рад, если вы добавите меня в друзья.'
+""" Message to send HR. Recipient name is automatically substituted for {name} """
+mes1 = 'Здравствуйте, '
+mes2 = '. Я Junior Python разработчик с опытом программирования более полугода. ' \
+          'Я в поисках работы и буду рад, если вы добавите меня в друзья.'
 
 """ Search filters """
 search_filters = {
