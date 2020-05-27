@@ -20,7 +20,7 @@ class LinkedinBot:
         self.login_url = f'{self.base_url}/login'
         self.search_url = f'{self.base_url}/search/results/people/'
 
-        """ Filter search url """
+        # Filter search url
         if search_f['geo']:
             geo = f"?facetGeoRegion={search_f['geo']}"
         if search_f['job']:
@@ -44,33 +44,34 @@ class LinkedinBot:
         """ Go to the search results page """
         self._nav(self.search_filters_url)
         time.sleep(2)
-        self.scroll_end_page()
 
     def scroll_end_page(self):
         self.browser.find_element_by_tag_name("body").send_keys(Keys.END)  # прокрутка до конца страницы
         time.sleep(1)
 
+    def scroll_top_page(self):
+        self.browser.find_element_by_tag_name("body").send_keys(Keys.HOME)  # прокрутка наверх страницы
+        time.sleep(1)
+
     def send_message(self, name_surname, button):
-        ActionChains(self.browser).move_to_element(button).perform()    # прокрутка к кнопке Connect
-        time.sleep(0.5)
-        button_id = button.get_attribute('id')
-        self.browser.find_element_by_id(f"{button_id}").click()
+        """ Click Connect and sending message """
+        button_connect_id = button.get_attribute('id')
+        self.browser.find_element_by_id(f"{button_connect_id}").click()
         self.browser.find_element_by_xpath("//button[@aria-label='Add a note']").click()
-        name = name_surname.split(' ')[0]
-        message = f'{mes1}{name}{mes2}'
+        # name = name_surname.split(' ')[0]
+        message = f'{mes1}{mes2}'
         self.browser.find_element_by_tag_name("textarea").send_keys(message)
-        time.sleep(3)
-        self.browser.find_element_by_xpath("//button[@aria-label='Done']").click()
-        # aria-label='Send invitation'
+        button_done_aria = self.browser.find_element_by_xpath("//div[@role='dialog']").text.split('\n')[-2]
+        self.browser.find_element_by_xpath(f"//button[@aria-label='{button_done_aria}']").click()
 
     def connect_and_save_contacts(self):
-        """ Отправка сообщения (через Connect) и запись контакта в БД """
-        self.browser.find_element_by_tag_name("body").send_keys(Keys.HOME)  # прокрутка наверх страницы
+        """ Finding contacts, sending messages (Connect button) and writing contacts to the database """
+        self.scroll_end_page()
         i_href = 0
         i_button = 0
-        href_list = self.browser.find_elements_by_class_name("search-result__result-link")   # список ссылок на страницы HR
-        search_res = self.browser.find_elements_by_class_name("search-result__wrapper")       # список контактов HR
-        button_list = self.browser.find_elements_by_xpath("//div[@class='search-result__actions']/div")   # список кнопок контактов
+        href_list = self.browser.find_elements_by_class_name("search-result__result-link")  # список ссылок на страницы HR
+        search_res = self.browser.find_elements_by_class_name("search-result__wrapper")  # список контактов HR
+        button_list = self.browser.find_elements_by_xpath("//div[@class='search-result__actions']/div")  # список кнопок контактов
         for result in search_res:
             res = result.text
             N = res.count('\n')
@@ -82,6 +83,7 @@ class LinkedinBot:
             # name | 3rd  | 3rd | job | geo | connect           N == 5
             # LinkedIn Member (without button Connect)          N == 3
             res_elem = res.split('\n')  # информация о HR
+            print(' '.join(res_elem))
 
             # Проверка контакта на доступность, отправка сообщения через Connect и запись в БД
             if (N == 5 or N == 6) and res_elem[-1] == 'Connect':
@@ -99,8 +101,7 @@ class LinkedinBot:
                     'status': 'Invite Sent',
                     'href': href,
                 }
-                button = button_list[i_button]
-                self.send_message(contact['name'], button)
+
                 if res_elem[2] == '2nd':
                     contact['job'] = res_elem[-4]
                     contact['geo'] = res_elem[-3]
@@ -108,11 +109,18 @@ class LinkedinBot:
                     contact['job'] = res_elem[-3]
                     contact['geo'] = res_elem[-2]
 
-                db_save(contact)        # Сохраняем контакт в БД
+                self.scroll_top_page()
+                ActionChains(self.browser).move_to_element(result).perform()    # прокрутка до кнопки контакта
+                time.sleep(1)
 
-            i_href += 2     # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
+                button = button_list[i_button]
+                self.send_message(contact['name'], button)
+                self.scroll_end_page()
 
-            if N == 5 or N == 6:    # Контакт LinkedIn Member без кнопки, пропускаем проходе через список
+                db_save(contact)  # Сохраняем контакт в БД
+
+            i_href += 2             # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
+            if N == 5 or N == 6:    # Контакт LinkedIn Member без кнопки, пропускаем при проходе через список
                 i_button += 1
 
     def next_page(self):
@@ -120,7 +128,6 @@ class LinkedinBot:
         self.scroll_end_page()
         self.browser.find_element_by_xpath("//button[@aria-label='Next']").click()
         time.sleep(1)
-        self.scroll_end_page()
 
     def start_bot(self):
         """ Parsing search results pages """
