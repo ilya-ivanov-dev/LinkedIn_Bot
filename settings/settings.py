@@ -6,9 +6,8 @@ username = 'test@test.com'
 password = 'password'
 
 """ Message to send HR """
-mes1 = 'Здравствуйте!'
-mes2 = ' Я Junior Python разработчик с опытом программирования более полугода. ' \
-          'Я в поисках работы и буду рад, если вы добавите меня в друзья.'
+mes1 = 'Приветствие '
+mes2 = 'Текст'
 
 """ Search filters """
 search_filters = {
