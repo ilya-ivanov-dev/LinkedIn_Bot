@@ -1,12 +1,18 @@
-import time, datetime
+import json
+import time
+import datetime
 import pytz
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 from db_use import db_save
-from settings.settings import mes1, mes2, search_filters, username, password
+from settings.settings import hi, text, search_filters, username, password
 
+
+with open('settings/names.json', encoding="utf-8") as f:
+    file_content = f.read()
+    data_names = json.loads(file_content)
 
 class LinkedinBot:
     def __init__(self, search_f):
@@ -27,7 +33,7 @@ class LinkedinBot:
             job = f"&title={search_f['job']}"
         if search_f['ind']:
             ind = f"&facetIndustry={search_f['ind']}"
-        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}'
+        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}&page=42'
 
     def _nav(self, url):
         """ Go to page """
@@ -58,8 +64,12 @@ class LinkedinBot:
         button_connect_id = button.get_attribute('id')
         self.browser.find_element_by_id(f"{button_connect_id}").click()
         self.browser.find_element_by_xpath("//button[@aria-label='Add a note']").click()
-        # name = name_surname.split(' ')[0]
-        message = f'{mes1}{mes2}'
+        contact_name = name_surname.split(' ')[0]
+        if contact_name in data_names.keys():
+            name = data_names.get(contact_name)
+            message = f'{hi}, {name}.\n{text}'
+        else:
+            message = f'{hi}!\n{text}'
         self.browser.find_element_by_tag_name("textarea").send_keys(message)
         button_done_aria = self.browser.find_element_by_xpath("//div[@role='dialog']").text.split('\n')[-2]
         self.browser.find_element_by_xpath(f"//button[@aria-label='{button_done_aria}']").click()
@@ -74,7 +84,7 @@ class LinkedinBot:
         button_list = self.browser.find_elements_by_xpath("//div[@class='search-result__actions']/div")  # список кнопок контактов
         for result in search_res:
             res = result.text
-            N = res.count('\n')
+            count_enter = res.count('\n')
             #   0            2    -4    -3             -1
             # name | 2nd  | 2nd | job | geo | sh_c | connect    N == 6  2nd degree connection
             #   0            2          -3     -2      -1
@@ -83,10 +93,9 @@ class LinkedinBot:
             # name | 3rd  | 3rd | job | geo | connect           N == 5
             # LinkedIn Member (without button Connect)          N == 3
             res_elem = res.split('\n')  # информация о HR
-            print(' '.join(res_elem))
 
             # Проверка контакта на доступность, отправка сообщения через Connect и запись в БД
-            if (N == 5 or N == 6) and res_elem[-1] == 'Connect':
+            if (count_enter == 5 or count_enter == 6) and res_elem[-1] == 'Connect':
                 # Определяем текущие дату и время
                 tz = pytz.timezone('Europe/Moscow')
                 now = datetime.datetime.now(tz)
@@ -110,17 +119,19 @@ class LinkedinBot:
                     contact['geo'] = res_elem[-2]
 
                 self.scroll_top_page()
+                time.sleep(1)
                 ActionChains(self.browser).move_to_element(result).perform()    # прокрутка до кнопки контакта
                 time.sleep(1)
 
                 button = button_list[i_button]
                 self.send_message(contact['name'], button)
                 self.scroll_end_page()
+                time.sleep(1)
 
                 db_save(contact)  # Сохраняем контакт в БД
 
             i_href += 2             # При парсинге получаем по 2 ссылки на контакт, поэтому берем каждую 2-ю
-            if N == 5 or N == 6:    # Контакт LinkedIn Member без кнопки, пропускаем при проходе через список
+            if count_enter == 5 or count_enter == 6: # Контакт LinkedIn Member без кнопки, пропускаем при проходе через список
                 i_button += 1
 
     def next_page(self):
