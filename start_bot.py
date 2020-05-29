@@ -33,7 +33,7 @@ class LinkedinBot:
             job = f"&title={search_f['job']}"
         if search_f['ind']:
             ind = f"&facetIndustry={search_f['ind']}"
-        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}&page=97'
+        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}'
 
     def _nav(self, url):
         """ Go to page """
