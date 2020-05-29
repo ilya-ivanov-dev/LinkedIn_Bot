@@ -33,7 +33,7 @@ class LinkedinBot:
             job = f"&title={search_f['job']}"
         if search_f['ind']:
             ind = f"&facetIndustry={search_f['ind']}"
-        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}'
+        self.search_filters_url = f'{self.search_url}{geo}{job}{ind}&page=97'
 
     def _nav(self, url):
         """ Go to page """
@@ -85,6 +85,9 @@ class LinkedinBot:
         for result in search_res:
             res = result.text
             count_enter = res.count('\n')
+
+            #       count_enter as N
+            # name | name | 2nd  | 2nd | job | geo | sh_c | Invite sent    N == 7
             #   0            2    -4    -3             -1
             # name | 2nd  | 2nd | job | geo | sh_c | connect    N == 6  2nd degree connection
             #   0            2          -3     -2      -1
@@ -92,6 +95,7 @@ class LinkedinBot:
             #   0                 -3    -2      -1
             # name | 3rd  | 3rd | job | geo | connect           N == 5
             # LinkedIn Member (without button Connect)          N == 3
+
             res_elem = res.split('\n')  # employee information
 
             if (count_enter == 5 or count_enter == 6) and res_elem[-1] == 'Connect':
@@ -132,7 +136,7 @@ class LinkedinBot:
             i_href += 2     # When parsing, we get 2 links to a contact, so we take every 2nd
 
             # LinkedIn Member contact without a button, skip when passing through the list
-            if count_enter == 5 or count_enter == 6:
+            if 5 <= count_enter <= 7:
                 i_button += 1
 
     def next_page(self):
